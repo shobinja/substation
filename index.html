@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Substation Test Report Generator</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
+
+  <!-- Production CDN builds -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pizzip@3.1.7/dist/pizzip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docxtemplater@3.49.1/build/docxtemplater.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+</head>
+<body>
+
+  <div class="card">
+    <div class="header">
+      <div class="logo-box">⚡</div>
+      <div class="header-text">
+        <h1>Substation Test Report Generator</h1>
+        <p>Upload your Excel workbook and select the reports you want to generate.</p>
+      </div>
+    </div>
+
+    <!-- Drag & Drop Zone -->
+    <div class="dropzone" id="dropzone" onclick="document.getElementById('fileInput').click()">
+      <div class="dropzone-label">
+        📁 Click to select or drop .xlsx/.xlsm file here
+      </div>
+      <div class="file-status" id="fileStatus"></div>
+      <input type="file" id="fileInput" accept=".xlsx, .xlsm" style="display: none;" />
+    </div>
+
+    <!-- Reports To Generate Checkboxes -->
+    <div class="reports-box">
+      <div class="reports-box-title">REPORTS TO GENERATE</div>
+      <div class="checkbox-grid">
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="RMU" />
+          <span>RMU</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="HV_CABLE" />
+          <span>HV Cable</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="LV_CABLE" />
+          <span>LV Cable</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="TX_IR" />
+          <span>Tx IR test</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="TX_RATIO" />
+          <span>Tx Ratio test</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="TX_VECTOR" />
+          <span>Tx Vector test</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="TX_BDV" />
+          <span>Tx BDV test</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" name="reportType" value="ACB" />
+          <span>ACB Test report</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn-generate" id="btnSubmit">Generate Selected Reports</button>
+    
+    <!-- Step-by-Step Live Progress Terminal -->
+    <div id="progressLog" class="progress-box"></div>
+    
+    <div id="noticeBox" class="notification"></div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
