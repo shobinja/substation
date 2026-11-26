@@ -13,60 +13,59 @@ const REPORT_CONFIG = {
     sheetCandidates: ['RMU', 'rmu'],
     templateCandidates: ['Template/RMU.docx', 'template/RMU.docx', './Template/RMU.docx'],
     outputSuffix: 'RMU.docx',
-    isTxReport: false
+    reportCategory: 'single'
   },
   HV_CABLE: {
     title: 'HV Cable',
     sheetCandidates: ['HV_CABLE', 'HV_Cable', 'hv_cable', 'HV Cable'],
     templateCandidates: ['Template/HV_CABLE.docx', 'template/HV_CABLE.docx', './Template/HV_CABLE.docx'],
-    outputSuffix: 'HV_Cable.docx',
-    isTxReport: false
+    reportLabel: 'HV_Cable',
+    reportCategory: 'cable'
   },
   LV_CABLE: {
     title: 'LV Cable',
     sheetCandidates: ['LV_CABLE', 'LV_Cable', 'lv_cable', 'LV Cable'],
     templateCandidates: ['Template/LV_CABLE.docx', 'template/LV_CABLE.docx', './Template/LV_CABLE.docx'],
-    outputSuffix: 'LV_Cable.docx',
-    isTxReport: false
+    reportLabel: 'LV_Cable',
+    reportCategory: 'cable'
   },
   TX_IR: {
     title: 'Tx IR test',
     sheetCandidates: ['Tx_IR', 'Tx_ir', 'TX_IR', 'Tx IR'],
     templateCandidates: ['Template/TX_IR.docx', 'template/TX_IR.docx', './Template/TX_IR.docx'],
     outputSuffix: 'TX_IR.docx',
-    isTxReport: true
+    reportCategory: 'transformer'
   },
   TX_RATIO: {
     title: 'Tx Ratio test',
     sheetCandidates: ['Tx_Ratio', 'Tx_ratio', 'TX_RATIO', 'Tx Ratio'],
     templateCandidates: ['Template/TX_RATIO.docx', 'template/TX_RATIO.docx', './Template/TX_RATIO.docx'],
     outputSuffix: 'TX_RATIO.docx',
-    isTxReport: true
+    reportCategory: 'transformer'
   },
   TX_VECTOR: {
     title: 'Tx Vector test',
     sheetCandidates: ['Tx_Vector', 'Tx_vector', 'TX_VECTOR', 'Tx Vector'],
     templateCandidates: ['Template/TX_VECTOR.docx', 'template/TX_VECTOR.docx', './Template/TX_VECTOR.docx'],
     outputSuffix: 'TX_VECTOR.docx',
-    isTxReport: true
+    reportCategory: 'transformer'
   },
   TX_BDV: {
     title: 'Tx BDV test',
     sheetCandidates: ['Tx_BDV', 'Tx BDV', 'Tx_bdv', 'TX_BDV'],
     templateCandidates: ['Template/TX_BDV.docx', 'template/TX_BDV.docx', './Template/TX_BDV.docx'],
     outputSuffix: 'TX_BDV.docx',
-    isTxReport: true
+    reportCategory: 'transformer'
   },
   ACB: {
     title: 'ACB Test report',
     sheetCandidates: ['ACB', 'acb', 'ACB_Test', 'ACB Test'],
     templateCandidates: ['Template/ACB.docx', 'template/ACB.docx', './Template/ACB.docx'],
     outputSuffix: 'ACB.docx',
-    isTxReport: false
+    reportCategory: 'single'
   }
 };
 
-// Log terminal helpers
 function logStep(msg, type = 'info') {
   progressLog.style.display = 'block';
   const item = document.createElement('div');
@@ -94,10 +93,12 @@ function clearNotice() {
 
 function sanitizeForFilename(str) {
   if (!str) return 'Report';
-  return str.replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').replace(/^_+|_+$/g, '');
+  return String(str)
+    .replace(/[^a-zA-Z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '');
 }
 
-// Format values, enforce 2 decimal places for ratio tags, and map booleans
 function formatValue(tag, val) {
   if (val === undefined || val === null) return "";
 
@@ -105,7 +106,6 @@ function formatValue(tag, val) {
     return val ? 'OK' : 'N/A';
   }
 
-  // 2 decimal places for calRuv, calRvw, calRwu, avgt tags
   const twoDecimalRegex = /^(calRuv[1-5]|calRvw[1-5]|calRwu[1-5]|avgt[1-5])$/i;
   if (typeof tag === 'string' && twoDecimalRegex.test(tag.trim())) {
     const num = parseFloat(val);
@@ -124,7 +124,6 @@ function formatValue(tag, val) {
   return String(val).trim();
 }
 
-// Extracts all rows from a sheet starting from row 3
 function extractAllRows(sheet) {
   const data = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true, cellDates: true });
   if (data.length < 2) return [];
@@ -170,7 +169,7 @@ async function loadTemplate(candidatePaths) {
       const res = await fetch(path);
       if (res.ok) return await res.arrayBuffer();
     } catch (e) {
-      // try next path
+      // try next path candidate
     }
   }
   throw new Error(`Template not found: ${candidatePaths[0]}`);
@@ -272,10 +271,10 @@ btnSubmit.addEventListener('click', async () => {
       baseData["DATE"] = baseData["date"];
     }
 
-    // Load TxDtls rows if any Transformer test is selected
+    // Check if Transformer reports are selected
     const needsTx = selectedCheckboxes.some(cb => {
       const conf = REPORT_CONFIG[cb.value];
-      return conf && conf.isTxReport;
+      return conf && conf.reportCategory === 'transformer';
     });
 
     let txDtlsRows = [];
@@ -316,7 +315,6 @@ btnSubmit.addEventListener('click', async () => {
         continue;
       }
 
-      // Fetch Word Template
       logStep(`Loading template for '${config.title}'...`);
       let templateBuffer;
       try {
@@ -326,27 +324,20 @@ btnSubmit.addEventListener('click', async () => {
         continue;
       }
 
-      // If Transformer test: match each TxDtls row via Tx_ID <-> Tx_Ref
-      if (config.isTxReport) {
-        for (const txRow of txDtlsRows) {
-          const currentTxId = txRow["Tx_ID"] || txRow["tx_id"] || "";
-          const currentTxNo = txRow["TxNo"] || txRow["txno"] || currentTxId;
+      // --- Category 1: Cable Reports (HV Cable & LV Cable - loop every row) ---
+      if (config.reportCategory === 'cable') {
+        logStep(`Processing ${sheetRows.length} cable circuit(s) for '${config.title}'...`);
 
-          // Find row matching Tx_Ref == Tx_ID
-          const matchedTestRow = sheetRows.find(r => {
-            const ref = r["Tx_Ref"] || r["tx_ref"] || "";
-            return String(ref).trim() === String(currentTxId).trim();
-          }) || sheetRows[0]; // fallback to first row if single transformer
+        sheetRows.forEach((cableRow, rowIdx) => {
+          const combinedData = Object.assign({}, baseData, cableRow);
 
-          const combinedData = Object.assign({}, baseData, txRow, matchedTestRow);
+          // Get circuit name for filename (CBL_CKT)
+          const circuitRaw = cableRow["CBL_CKT"] || cableRow["cbl_ckt"] || `Circuit_${rowIdx + 1}`;
+          const sanitizedCircuit = sanitizeForFilename(circuitRaw);
 
-          // Link TxNo directly so {TxNo} and {Tx_ID} in document show the transformer number
-          combinedData["Tx_ID"] = currentTxNo;
-          combinedData["tx_id"] = currentTxNo;
-          combinedData["TxNo"] = currentTxNo;
-          combinedData["txno"] = currentTxNo;
+          // Naming format: [SS]_[ReportLabel]_[CBL_CKT].docx
+          const fileName = `${sanitizedSS}_${config.reportLabel}_${sanitizedCircuit}.docx`;
 
-          // Render document
           const zip = new PizZipConstructor(templateBuffer);
           const doc = new DocxtemplaterConstructor(zip, {
             paragraphLoop: true,
@@ -363,7 +354,45 @@ btnSubmit.addEventListener('click', async () => {
             mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           });
 
-          // Unique filename per transformer (e.g. 12456_FB_TX1_TX_IR.docx)
+          outputZip.file(fileName, docxArrayBuffer);
+          totalGenerated++;
+          logStep(`✓ Created: ${fileName}`, "success");
+        });
+
+      // --- Category 2: Transformer Reports ---
+      } else if (config.reportCategory === 'transformer') {
+        for (const txRow of txDtlsRows) {
+          const currentTxId = txRow["Tx_ID"] || txRow["tx_id"] || "";
+          const currentTxNo = txRow["TxNo"] || txRow["txno"] || currentTxId;
+
+          const matchedTestRow = sheetRows.find(r => {
+            const ref = r["Tx_Ref"] || r["tx_ref"] || "";
+            return String(ref).trim() === String(currentTxId).trim();
+          }) || sheetRows[0];
+
+          const combinedData = Object.assign({}, baseData, txRow, matchedTestRow);
+
+          combinedData["Tx_ID"] = currentTxNo;
+          combinedData["tx_id"] = currentTxNo;
+          combinedData["TxNo"] = currentTxNo;
+          combinedData["txno"] = currentTxNo;
+
+          const zip = new PizZipConstructor(templateBuffer);
+          const doc = new DocxtemplaterConstructor(zip, {
+            paragraphLoop: true,
+            linebreaks: true,
+            delimiters: { start: '{', end: '}' },
+            nullGetter: () => ""
+          });
+
+          doc.setData(combinedData);
+          doc.render();
+
+          const docxArrayBuffer = doc.getZip().generate({
+            type: "arraybuffer",
+            mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          });
+
           const txSuffix = txDtlsRows.length > 1 ? `_TX${currentTxNo}_` : '_';
           const fileName = `${sanitizedSS}${txSuffix}${config.outputSuffix}`;
           outputZip.file(fileName, docxArrayBuffer);
@@ -371,11 +400,11 @@ btnSubmit.addEventListener('click', async () => {
 
           logStep(`✓ Created: ${fileName}`, "success");
         }
+
+      // --- Category 3: Single-Item Reports (RMU, ACB) ---
       } else {
-        // Non-transformer reports (RMU, HV Cable, LV Cable, ACB)
         const combinedData = Object.assign({}, baseData, sheetRows[0]);
 
-        // Tolerance for space inside { ACB_I}
         if (combinedData["ACB_I"] !== undefined) {
           combinedData[" ACB_I"] = combinedData["ACB_I"];
         }
